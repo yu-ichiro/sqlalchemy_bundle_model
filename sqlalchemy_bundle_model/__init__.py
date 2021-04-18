@@ -44,7 +44,7 @@ An extension to SQLAlchemy to treat aggregated columns and clauses as Models
 """
 
 __copyright__ = "Copyright (C) 2021 Yuichiro Smith"
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __license__ = "Apache License 2.0"
 __author__ = "Yuichiro Smith <contact@yu-smith.com>"
 __url__ = "https://github.com/yu-ichiro/sqlalchemy_bundle_model"
