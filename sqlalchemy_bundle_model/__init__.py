@@ -1,6 +1,11 @@
 """
 An extension to SQLAlchemy to treat aggregated columns and clauses as Models
 
+>>> from sqlalchemy import Column, BigInteger, Text, ForeignKey
+>>> from sqlalchemy.orm import declarative_base, relationship, sessionmaker
+>>> from sqlalchemy.engine import create_engine
+>>> from sqlalchemy_bundle_model import BundleModel, col
+>>> DeclarativeBase = declarative_base()
 >>> class User(DeclarativeBase):
 ...     __tablename__ = "users"
 ...     id = Column(BigInteger, primary_key=True)
@@ -20,9 +25,12 @@ An extension to SQLAlchemy to treat aggregated columns and clauses as Models
 ...     group_name = col(str, Group.name)
 ...
 ...     @staticmethod
-...     def join(_query: Query):
+...     def join(_query):
 ...         return _query.join(User.group)
 ...
+>>> engine = create_engine("sqlite://")
+>>> DeclarativeBase.metadata.create_all(bind=engine)
+>>> session_cls = sessionmaker(bind=engine)
 >>> session = session_cls()
 >>> query = session.query(GroupUser)
 >>> query = GroupUser.join(query)
@@ -39,12 +47,15 @@ __status__ = "beta"
 __date__ = "2021/04/18"
 
 from collections import OrderedDict
-from typing import Type, Union, Any, TypeVar, Dict
+from typing import Type, Union, Any, TypeVar, Dict, NamedTuple
 try:
     from typing import NamedTupleMeta
 except ImportError:
-    from typing import NamedTuple
     NamedTupleMeta = type(NamedTuple)
+try:
+    from typing import _NamedTuple
+except ImportError:
+    _NamedTuple = NamedTuple
 
 from sqlalchemy.orm import Bundle
 from sqlalchemy.sql.elements import Label, _textual_label_reference
@@ -70,13 +81,20 @@ class BundleMeta(Bundle, type):
     single_entity = True
 
     def __init__(cls, name, bases, namespace):
-        cls.__attrs: Dict[str, Alias] = {}
+        cls.__attrs: Dict[str, Alias] = OrderedDict()
         _namespace = OrderedDict()
         for base in bases:
-            _namespace.update(base.__dict__)
-        _namespace.update(namespace)
+            for key, value in base.__dict__.items():
+                if key in _namespace:
+                    _namespace.move_to_end(key)
+                _namespace[key] = value
+        for key, value in namespace.items():
+            if key in _namespace:
+                _namespace.move_to_end(key)
+            _namespace[key] = value
         namespace = _namespace
         for attr_key, attr_value in namespace.items():
+            print(attr_key, attr_value)
             if isinstance(attr_value, Operators) and hasattr(attr_value, '_label'):
                 cls.__attrs[attr_key] = namespace[attr_key] = Alias(attr_value, attr_key)
             if isinstance(attr_value, Alias):
@@ -92,7 +110,6 @@ class BundleMeta(Bundle, type):
             if hasattr(value, '__set_name__'):
                 value.__set_name__(cls, key)  # noqa
         setattr(cls, '__name__', name)
-        setattr(cls, 'name', name)
 
     @property
     def aliases(cls):
@@ -170,15 +187,16 @@ def bundle(class_: Type[T]) -> Type[T]:
 
 class BundleResult(NamedTupleMeta, type):
     def __new__(mcs, bundle_cls: BundleMeta):
-        annotations = {}
+        annotations = OrderedDict()
         for name, alias in bundle_cls.aliases.items():
             try:
                 annotations[name] = alias.type.python_type
             except NotImplementedError:
                 annotations[name] = Any
-        return super().__new__(mcs, bundle_cls.__name__, (), {
+        return super().__new__(mcs, bundle_cls.__name__, (_NamedTuple,), {
             '__annotations__': annotations,
             '__table__': bundle_cls,
+            '__module__': bundle_cls.__module__
         })
 
 
