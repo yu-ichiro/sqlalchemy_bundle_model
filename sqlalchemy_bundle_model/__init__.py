@@ -53,6 +53,7 @@ __date__ = "2021/04/18"
 
 from collections import OrderedDict
 from typing import Type, Union, Any, TypeVar, Dict, NamedTuple
+
 try:
     from typing import NamedTupleMeta
 except ImportError:
@@ -66,7 +67,7 @@ from sqlalchemy.orm import Bundle
 from sqlalchemy.sql.elements import Label, _textual_label_reference
 from sqlalchemy.sql.operators import Operators
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class Alias(Label):
@@ -99,7 +100,7 @@ class BundleMeta(Bundle, type):
             _namespace[key] = value
         namespace = _namespace
         for attr_key, attr_value in namespace.items():
-            if isinstance(attr_value, Operators) and hasattr(attr_value, '_label'):
+            if isinstance(attr_value, Operators) and hasattr(attr_value, "_label"):
                 cls.__attrs[attr_key] = namespace[attr_key] = Alias(attr_value, attr_key)
             if isinstance(attr_value, Alias):
                 cls.__attrs[attr_key] = namespace[attr_key] = attr_value
@@ -111,9 +112,9 @@ class BundleMeta(Bundle, type):
                 setattr(cls, key, value)
             except:  # noqa
                 pass
-            if hasattr(value, '__set_name__'):
+            if hasattr(value, "__set_name__"):
                 value.__set_name__(cls, key)  # noqa
-        setattr(cls, '__name__', name)
+        setattr(cls, "__name__", name)
 
     @property
     def aliases(cls):
@@ -121,13 +122,14 @@ class BundleMeta(Bundle, type):
 
     @property
     def _select_iterable(self):
-        return self,
+        return (self,)
 
 
 class BundleModel(metaclass=BundleMeta):
     """
     A model that can aggregate columns and clauses from different tables and treat it like a orm model
     """
+
     auto_process_row = True
 
     @classmethod
@@ -183,10 +185,29 @@ def bundle(class_: Type[T]) -> Type[T]:
     """
     namespace = OrderedDict()
     for attr in dir(class_):
-        if not attr.startswith('_') and attr != 'metadata':
+        if not attr.startswith("_") and attr != "metadata":
             attr_object = getattr(class_, attr)
             namespace[attr] = attr_object
     return BundleMeta(class_.__name__, (), namespace)  # noqa
+
+
+_prohibited = frozenset(
+    {
+        "__dict__",
+        "__new__",
+        "__init__",
+        "__slots__",
+        "__getnewargs__",
+        "_fields",
+        "_field_defaults",
+        "_make",
+        "_replace",
+        "_asdict",
+        "_source",
+        "__class__",
+        "__repr__",
+    }
+)
 
 
 class BundleResult(NamedTupleMeta, type):
@@ -197,11 +218,25 @@ class BundleResult(NamedTupleMeta, type):
                 annotations[name] = alias.type.python_type
             except NotImplementedError:
                 annotations[name] = Any
-        return super().__new__(mcs, bundle_cls.__name__, (_NamedTuple,), {
-            '__annotations__': annotations,
-            '__table__': bundle_cls,
-            '__module__': bundle_cls.__module__
-        })
+        namespace = OrderedDict()
+        for base in bundle_cls.__mro__:
+            for key, value in base.__dict__.items():
+                if key in _prohibited:
+                    continue
+                if key in namespace:
+                    namespace.move_to_end(key)
+                namespace[key] = value
+        return super().__new__(
+            mcs,
+            bundle_cls.__name__,
+            (_NamedTuple,),
+            {
+                **namespace,
+                "__annotations__": annotations,
+                "__table__": bundle_cls,
+                "__module__": bundle_cls.__module__,
+            },
+        )
 
 
 def col(_type: Type[T], column: Operators) -> Union[T, Alias]:
