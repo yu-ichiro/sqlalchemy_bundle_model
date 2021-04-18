@@ -4,7 +4,7 @@ An extension to SQLAlchemy to treat aggregated columns and clauses as Models
 # installation
 
 ```
-$ pip install sqlalchemy_bundle_model
+$ pip install sqlalchemy-bundle-model
 ```
 
 # usage
