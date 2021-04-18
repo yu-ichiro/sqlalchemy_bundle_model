@@ -32,10 +32,15 @@ An extension to SQLAlchemy to treat aggregated columns and clauses as Models
 >>> DeclarativeBase.metadata.create_all(bind=engine)
 >>> session_cls = sessionmaker(bind=engine)
 >>> session = session_cls()
+>>> user = User(id=1, name="John Doe")
+>>> group = Group(id=1, name="A")
+>>> user.group = group
+>>> session.add(user)
+>>> session.commit()
 >>> query = session.query(GroupUser)
 >>> query = GroupUser.join(query)
 >>> result = query.first()
->>> result.group_name is not None
+>>> result.group_name == "A"
 """
 
 __copyright__ = "Copyright (C) 2021 Yuichiro Smith"
@@ -94,7 +99,6 @@ class BundleMeta(Bundle, type):
             _namespace[key] = value
         namespace = _namespace
         for attr_key, attr_value in namespace.items():
-            print(attr_key, attr_value)
             if isinstance(attr_value, Operators) and hasattr(attr_value, '_label'):
                 cls.__attrs[attr_key] = namespace[attr_key] = Alias(attr_value, attr_key)
             if isinstance(attr_value, Alias):

@@ -10,7 +10,11 @@ $ pip install sqlalchemy_bundle_model
 # usage
 
 ```
->>> from sqlalchemy_bundle_model import BundleModel
+>>> from sqlalchemy import Column, BigInteger, Text, ForeignKey
+>>> from sqlalchemy.orm import declarative_base, relationship, sessionmaker
+>>> from sqlalchemy.engine import create_engine
+>>> from sqlalchemy_bundle_model import BundleModel, col
+>>> DeclarativeBase = declarative_base()
 >>> class User(DeclarativeBase):
 ...     __tablename__ = "users"
 ...     id = Column(BigInteger, primary_key=True)
@@ -30,13 +34,20 @@ $ pip install sqlalchemy_bundle_model
 ...     group_name = col(str, Group.name)
 ...
 ...     @staticmethod
-...     def join(_query: Query):
+...     def join(_query):
 ...         return _query.join(User.group)
 ...
+>>> engine = create_engine("sqlite://")
+>>> DeclarativeBase.metadata.create_all(bind=engine)
+>>> session_cls = sessionmaker(bind=engine)
 >>> session = session_cls()
+>>> user = User(id=1, name="John Doe")
+>>> group = Group(id=1, name="A")
+>>> user.group = group
+>>> session.add(user)
+>>> session.commit()
 >>> query = session.query(GroupUser)
 >>> query = GroupUser.join(query)
 >>> result = query.first()
->>> result.group_name is not None
-
+>>> result.group_name == "A"
 ```

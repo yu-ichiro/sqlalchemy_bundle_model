@@ -5,6 +5,7 @@ description = "An extension to SQLAlchemy to treat aggregated columns and clause
 authors = ["Yuichiro Smith <contact@yu-smith.com>"]
 readme = "README.md"
 license = "Apache Licence 2.0"
+repository = "https://github.com/yu-ichiro/sqlalchemy_bundle_model"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
