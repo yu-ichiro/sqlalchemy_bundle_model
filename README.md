@@ -1,6 +1,12 @@
 # sqlalchemy_bundle_model
 An extension to SQLAlchemy to treat aggregated columns and clauses as Models
 
+# installation
+
+```
+$ pip install sqlalchemy_bundle_model
+```
+
 # usage
 
 ```
