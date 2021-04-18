@@ -39,7 +39,12 @@ __status__ = "beta"
 __date__ = "2021/04/18"
 
 from collections import OrderedDict
-from typing import Type, Union, Any, TypeVar, NamedTuple, Dict
+from typing import Type, Union, Any, TypeVar, Dict
+try:
+    from typing import NamedTupleMeta
+except ImportError:
+    from typing import NamedTuple
+    NamedTupleMeta = type(NamedTuple)
 
 from sqlalchemy.orm import Bundle
 from sqlalchemy.sql.elements import Label, _textual_label_reference
@@ -163,7 +168,7 @@ def bundle(class_: Type[T]) -> Type[T]:
     return BundleMeta(class_.__name__, (), namespace)  # noqa
 
 
-class BundleResult(type(NamedTuple), type):
+class BundleResult(NamedTupleMeta, type):
     def __new__(mcs, bundle_cls: BundleMeta):
         annotations = {}
         for name, alias in bundle_cls.aliases.items():
